@@ -1,0 +1,23 @@
+name: Build and Run Docker
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_run_docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Build Docker image
+        run: |
+          docker build -t my-app .
+      
+      - name: Run Docker image
+        run: |
+          docker run my-app
