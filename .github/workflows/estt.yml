@@ -26,18 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install coverage
         pip install -r requirements.txt
-
-    - name: Run tests
+        
+    - name: Run custom test script
       run: |
-        # Run all tests and output coverage report
-        if [ -z $1 ]
-        then
-          coverage run -m unittest discover
-        else
-          # Truncate result file before running a single specified test case
-          echo "" > .coverage
-          coverage run -m unittest test.tests.TestClass.test_func_name
-        fi
+        # Run custom test script
+        ./test/test.sh
         
     - name: Generate coverage report
       run: |
