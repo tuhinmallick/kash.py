@@ -30,7 +30,7 @@ jobs:
     - name: Run custom test script
       run: |
         # Run custom test script
-        ./test/test.sh
+        ./test/test_kash.sh
         
     - name: Generate coverage report
       run: |
