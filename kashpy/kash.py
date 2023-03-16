@@ -105,7 +105,8 @@ def foldl_from_file(path_str, foldl_function, initial_acc, break_function=lambda
             else:
                 value_str = line_str
         #
-        return key_str, value_str 
+        return key_str, value_str
+
     #
     acc = initial_acc
     with open(path_str) as textIOWrapper:
@@ -142,9 +143,11 @@ def foldl_from_file(path_str, foldl_function, initial_acc, break_function=lambda
                 #
                 acc = foldl_function(acc, key_str_value_str_tuple)
                 #
-                if num_lines_int != ALL_MESSAGES:
-                    if line_counter_int >= num_lines_int:
-                        break
+                if (
+                    num_lines_int != ALL_MESSAGES
+                    and line_counter_int >= num_lines_int
+                ):
+                    break
             #
             if break_bool:
                 break
@@ -216,44 +219,45 @@ def clusters(pattern="*", config=False):
     yaml_cluster_path_str_list = glob.glob(f"{clusters_path_str}/{pattern_str}.yaml")
     yml_cluster_path_str_list = glob.glob(f"{clusters_path_str}/{pattern_str}.yml")
     #
-    yaml_cluster_str_list = [re.search(".*/(.*)\.yaml", yaml_cluster_path_str).group(1) for yaml_cluster_path_str in yaml_cluster_path_str_list if re.search(".*/(.*)\.yaml", yaml_cluster_path_str) is not None]
-    yml_cluster_str_list = [re.search(".*/(.*)\.yml", yml_cluster_path_str).group(1) for yml_cluster_path_str in yml_cluster_path_str_list if re.search(".*/(.*)\.yml", yml_cluster_path_str) is not None]
+    yaml_cluster_str_list = [
+        re.search(".*/(.*)\.yaml", yaml_cluster_path_str)[1]
+        for yaml_cluster_path_str in yaml_cluster_path_str_list
+        if re.search(".*/(.*)\.yaml", yaml_cluster_path_str) is not None
+    ]
+    yml_cluster_str_list = [
+        re.search(".*/(.*)\.yml", yml_cluster_path_str)[1]
+        for yml_cluster_path_str in yml_cluster_path_str_list
+        if re.search(".*/(.*)\.yml", yml_cluster_path_str) is not None
+    ]
     #
     cluster_str_list = yaml_cluster_str_list + yml_cluster_str_list
-    #
     if config:
-        cluster_str_config_dict_dict = {cluster_str: get_config_dict(cluster_str) for cluster_str in cluster_str_list}
-        return cluster_str_config_dict_dict
-    else:
-        cluster_str_list.sort()
-        return cluster_str_list
+        return {
+            cluster_str: get_config_dict(cluster_str)
+            for cluster_str in cluster_str_list
+        }
+    cluster_str_list.sort()
+    return cluster_str_list
 
 # Get AdminClient, Producer and Consumer objects from a configuration dictionary
 
 def get_adminClient(config_dict):
-    adminClient = AdminClient(config_dict)
-    return adminClient
+    return AdminClient(config_dict)
 
 
 def get_producer(config_dict):
-    producer = Producer(config_dict)
-    return producer
+    return Producer(config_dict)
 
 
 def get_consumer(config_dict):
-    consumer = Consumer(config_dict)
-    return consumer
+    return Consumer(config_dict)
 
 
 def get_schemaRegistryClient(config_dict):
-    dict = {}
-    #
-    dict["url"] = config_dict["schema.registry.url"]
+    dict = {"url": config_dict["schema.registry.url"]}
     if "basic.auth.user.info" in config_dict:
         dict["basic.auth.user.info"] = config_dict["basic.auth.user.info"]
-    #
-    schemaRegistryClient = SchemaRegistryClient(dict)
-    return schemaRegistryClient
+    return SchemaRegistryClient(dict)
 
 
 # Conversion functions from confluent_kafka objects to kash.py basic Python datatypes like strings and dictionaries
@@ -261,40 +265,64 @@ def get_schemaRegistryClient(config_dict):
 def offset_int_to_int_or_str(offset_int):
     if offset_int >= 0:
         return offset_int
+    if offset_int == OFFSET_BEGINNING:
+        return "OFFSET_BEGINNING"
+    elif offset_int == OFFSET_END:
+        return "OFFSET_END"
+    elif offset_int == OFFSET_INVALID:
+        return "OFFSET_INVALID"
+    elif offset_int == OFFSET_STORED:
+        return "OFFSET_STORED"
     else:
-        if offset_int == OFFSET_BEGINNING:
-            return "OFFSET_BEGINNING"
-        elif offset_int == OFFSET_END:
-            return "OFFSET_END"
-        elif offset_int == OFFSET_INVALID:
-            return "OFFSET_INVALID"
-        elif offset_int == OFFSET_STORED:
-            return "OFFSET_STORED"
-        else:
-            return offset_int
+        return offset_int
 
 
 def groupMetadata_to_group_dict(groupMetadata):
-    group_dict = {"id": groupMetadata.id, "error": kafkaError_to_error_dict(groupMetadata.error), "state": groupMetadata.state, "protocol_type": groupMetadata.protocol_type, "protocol": groupMetadata.protocol, "members": [groupMember_to_dict(groupMember) for groupMember in groupMetadata.members]}
-    return group_dict
+    return {
+        "id": groupMetadata.id,
+        "error": kafkaError_to_error_dict(groupMetadata.error),
+        "state": groupMetadata.state,
+        "protocol_type": groupMetadata.protocol_type,
+        "protocol": groupMetadata.protocol,
+        "members": [
+            groupMember_to_dict(groupMember)
+            for groupMember in groupMetadata.members
+        ],
+    }
 
 
 def partitionMetadata_to_partition_dict(partitionMetadata):
-    partition_dict = {"id": partitionMetadata.id, "leader": partitionMetadata.leader, "replicas": partitionMetadata.replicas, "isrs": partitionMetadata.isrs, "error": kafkaError_to_error_dict(partitionMetadata.error)}
-    return partition_dict
+    return {
+        "id": partitionMetadata.id,
+        "leader": partitionMetadata.leader,
+        "replicas": partitionMetadata.replicas,
+        "isrs": partitionMetadata.isrs,
+        "error": kafkaError_to_error_dict(partitionMetadata.error),
+    }
 
 
 def topicMetadata_to_topic_dict(topicMetadata):
     partitions_dict = {partition_int: partitionMetadata_to_partition_dict(partitionMetadata) for partition_int, partitionMetadata in topicMetadata.partitions.items()}
-    topic_dict = {"topic": topicMetadata.topic, "partitions": partitions_dict, "error": kafkaError_to_error_dict(topicMetadata.error)}
-    return topic_dict
+    return {
+        "topic": topicMetadata.topic,
+        "partitions": partitions_dict,
+        "error": kafkaError_to_error_dict(topicMetadata.error),
+    }
 
 
 def kafkaError_to_error_dict(kafkaError):
-    error_dict = None
-    if kafkaError:
-        error_dict = {"code": kafkaError.code(), "fatal": kafkaError.fatal(), "name": kafkaError.name(), "retriable": kafkaError.retriable(), "str": kafkaError.str(), "txn_requires_abort": kafkaError.txn_requires_abort()}
-    return error_dict
+    return (
+        {
+            "code": kafkaError.code(),
+            "fatal": kafkaError.fatal(),
+            "name": kafkaError.name(),
+            "retriable": kafkaError.retriable(),
+            "str": kafkaError.str(),
+            "txn_requires_abort": kafkaError.txn_requires_abort(),
+        }
+        if kafkaError
+        else None
+    )
 
 
 def str_to_resourceType(restype_str):
@@ -434,23 +462,29 @@ def aclPermissionType_to_str(aclPermissionType):
 
 
 def aclBinding_to_dict(aclBinding):
-    dict = {"restype": resourceType_to_str(aclBinding.restype),
-            "name": aclBinding.name,
-            "resource_pattern_type": resourcePatternType_to_str(aclBinding.resource_pattern_type),
-            "principal": aclBinding.principal,
-            "host": aclBinding.host,
-            "operation": aclOperation_to_str(aclBinding.operation),
-            "permission_type": aclPermissionType_to_str(aclBinding.permission_type)}
-    return dict
+    return {
+        "restype": resourceType_to_str(aclBinding.restype),
+        "name": aclBinding.name,
+        "resource_pattern_type": resourcePatternType_to_str(
+            aclBinding.resource_pattern_type
+        ),
+        "principal": aclBinding.principal,
+        "host": aclBinding.host,
+        "operation": aclOperation_to_str(aclBinding.operation),
+        "permission_type": aclPermissionType_to_str(
+            aclBinding.permission_type
+        ),
+    }
 
 
 def groupMember_to_dict(groupMember):
-    dict = {"id": groupMember.id,
-            "client_id": groupMember.client_id,
-            "client_host": groupMember.client_host,
-            "metadata": groupMember.metadata,
-            "assignment": groupMember.assignment}
-    return dict
+    return {
+        "id": groupMember.id,
+        "client_id": groupMember.client_id,
+        "client_host": groupMember.client_host,
+        "metadata": groupMember.metadata,
+        "assignment": groupMember.assignment,
+    }
 
 
 def consumerGroupState_to_str(consumerGroupState):
@@ -487,53 +521,65 @@ def str_to_consumerGroupState(consumerGroupState_str):
 
 
 def memberAssignment_to_dict(memberAssignment):
-    dict = {"topic_partitions": [topicPartition_to_dict(topicPartition) for topicPartition in memberAssignment.topic_partitions]}
-    return dict
+    return {
+        "topic_partitions": [
+            topicPartition_to_dict(topicPartition)
+            for topicPartition in memberAssignment.topic_partitions
+        ]
+    }
 
 
 def memberDescription_to_dict(memberDescription):
-    dict = {"member_id": memberDescription.member_id,
-            "client_id": memberDescription.client_id,
-            "host": memberDescription.host,
-            "assignment": memberAssignment_to_dict(memberDescription.assignment),
-            "group_instance_id": memberDescription.group_instance_id}
-    return dict
+    return {
+        "member_id": memberDescription.member_id,
+        "client_id": memberDescription.client_id,
+        "host": memberDescription.host,
+        "assignment": memberAssignment_to_dict(memberDescription.assignment),
+        "group_instance_id": memberDescription.group_instance_id,
+    }
 
 
 def consumerGroupDescription_to_group_description_dict(consumerGroupDescription):
-    group_description_dict = {"group_id": consumerGroupDescription.group_id,
-                              "is_simple_consumer_group": consumerGroupDescription.is_simple_consumer_group,
-                              "members": [memberDescription_to_dict(memberDescription) for memberDescription in consumerGroupDescription.members],
-                              "partition_assignor": consumerGroupDescription.partition_assignor,
-                              "state": consumerGroupState_to_str(consumerGroupDescription.state),
-                              "coordinator": node_to_dict(consumerGroupDescription.coordinator)}
-    return group_description_dict
+    return {
+        "group_id": consumerGroupDescription.group_id,
+        "is_simple_consumer_group": consumerGroupDescription.is_simple_consumer_group,
+        "members": [
+            memberDescription_to_dict(memberDescription)
+            for memberDescription in consumerGroupDescription.members
+        ],
+        "partition_assignor": consumerGroupDescription.partition_assignor,
+        "state": consumerGroupState_to_str(consumerGroupDescription.state),
+        "coordinator": node_to_dict(consumerGroupDescription.coordinator),
+    }
 
 
 def topicPartition_to_dict(topicPartition):
-    dict = {"error": kafkaError_to_error_dict(topicPartition.error),
-            "metadata": topicPartition.metadata,
-            "offset": topicPartition.offset,
-            "partition": topicPartition.partition,
-            "topic": topicPartition.topic}
-    return dict
+    return {
+        "error": kafkaError_to_error_dict(topicPartition.error),
+        "metadata": topicPartition.metadata,
+        "offset": topicPartition.offset,
+        "partition": topicPartition.partition,
+        "topic": topicPartition.topic,
+    }
 
 
 def node_to_dict(node):
-    dict = {"id": node.id,
-            "id_string": node.id_string,
-            "host": node.host,
-            "port": node.port,
-            "rack": node.rack}
-    return dict
+    return {
+        "id": node.id,
+        "id_string": node.id_string,
+        "host": node.host,
+        "port": node.port,
+        "rack": node.rack,
+    }
 
 # group_offsets =TA group_str_topic_str_partition_int_offset_int_dict_dict_dict
 # topic_offsets =TA topic_str_partition_int_offset_int_dict_dict
 # (partition_)offsets =TA partition_int_offset_int_dict
 def group_str_consumerGroupTopicPartitions_future_dict_to_consumerGroupTopicPartitions_list(group_str_consumerGroupTopicPartitions_future_dict):
-    consumerGroupTopicPartitions_list = [consumerGroupTopicPartitions_future.result() for consumerGroupTopicPartitions_future in group_str_consumerGroupTopicPartitions_future_dict.values()]
-    #
-    return consumerGroupTopicPartitions_list
+    return [
+        consumerGroupTopicPartitions_future.result()
+        for consumerGroupTopicPartitions_future in group_str_consumerGroupTopicPartitions_future_dict.values()
+    ]
 
 
 def consumerGroupTopicPartitions_list_to_group_offsets(consumerGroupTopicPartitions_list):
@@ -555,25 +601,31 @@ def consumerGroupTopicPartitions_to_topic_offsets(consumerGroupTopicPartitions):
             topic_str_partition_int_offset_int_tuple_list_dict[topic_str].append(partition_int_offset_int_tuple)
         else:
             topic_str_partition_int_offset_int_tuple_list_dict[topic_str] = [(topicPartition.partition, topicPartition.offset)]
-    #
-    topic_str_partition_int_offset_int_dict_dict = {topic_str: {partition_int_offset_int_tuple[0]: partition_int_offset_int_tuple[1] for partition_int_offset_int_tuple in partition_int_offset_int_tuple_list} for topic_str, partition_int_offset_int_tuple_list in topic_str_partition_int_offset_int_tuple_list_dict.items()}
-    #
-    return topic_str_partition_int_offset_int_dict_dict
+    return {
+        topic_str: {
+            partition_int_offset_int_tuple[0]: partition_int_offset_int_tuple[
+                1
+            ]
+            for partition_int_offset_int_tuple in partition_int_offset_int_tuple_list
+        }
+        for topic_str, partition_int_offset_int_tuple_list in topic_str_partition_int_offset_int_tuple_list_dict.items()
+    }
 
 def group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict):
     consumerGroupTopicPartitions_list = group_str_consumerGroupTopicPartitions_future_dict_to_consumerGroupTopicPartitions_list(group_str_consumerGroupTopicPartitions_future_dict)
-    #
-    group_offsets = consumerGroupTopicPartitions_list_to_group_offsets(consumerGroupTopicPartitions_list)
-    #
-    return group_offsets
+    return consumerGroupTopicPartitions_list_to_group_offsets(
+        consumerGroupTopicPartitions_list
+    )
 
 def group_offsets_to_consumerGroupTopicPartitions_list(group_offsets):
     consumerGroupTopicPartitions_list = []
     for group_str, topic_offsets in group_offsets.items():
         topicPartition_list = []
         for topic_str, partition_offsets in topic_offsets.items():
-            for partition_int, offset_int in partition_offsets.items():
-                topicPartition_list.append(TopicPartition(topic_str, partition_int, offset_int))
+            topicPartition_list.extend(
+                TopicPartition(topic_str, partition_int, offset_int)
+                for partition_int, offset_int in partition_offsets.items()
+            )
         consumerGroupTopicPartitions_list.append(_ConsumerGroupTopicPartitions(group_str, topicPartition_list))
     return consumerGroupTopicPartitions_list
 
@@ -655,10 +707,16 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
             else:
                 timestamp_int = 0
             #
-            key_type_str = target_key_type_str if target_key_type_str else source_key_type_str
-            value_type_str = target_value_type_str if target_value_type_str else source_value_type_str
-            key_schema_str = target_key_schema_str if target_key_schema_str else source_cluster.last_consumed_message_key_schema_str
-            value_schema_str = target_value_schema_str if target_value_schema_str else source_cluster.last_consumed_message_value_schema_str
+            key_type_str = target_key_type_str or source_key_type_str
+            value_type_str = target_value_type_str or source_value_type_str
+            key_schema_str = (
+                target_key_schema_str
+                or source_cluster.last_consumed_message_key_schema_str
+            )
+            value_schema_str = (
+                target_value_schema_str
+                or source_cluster.last_consumed_message_value_schema_str
+            )
             partition_int = message_dict["partition"] if source_num_partitions_int == target_num_partitions_int else RD_KAFKA_PARTITION_UA
             #
             target_cluster.produce(target_topic_str, message_dict["value"], message_dict["key"], key_type=key_type_str, value_type=value_type_str, key_schema=key_schema_str, value_schema=value_schema_str, partition=partition_int, timestamp=timestamp_int, headers=message_dict["headers"], on_delivery=on_delivery)
@@ -668,6 +726,7 @@ def flatmap(source_cluster, source_topic_str, target_cluster, target_topic_str, 
             #
             if target_cluster.produced_messages_counter_int % target_cluster.kash_dict["flush.num.messages"] == 0:
                 target_cluster.flush()
+
     #
     num_messages_int = source_cluster.foreach(source_topic_str, foreach_function, break_function=break_function, group=group, offsets=offsets, config=config, key_type=source_key_type_str, value_type=source_value_type_str, n=n, batch_size=batch_size)
     #
@@ -865,7 +924,7 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         if cluster1.verbose_int > 0 and message_counter_int1 % cluster1.kash_dict["progress.num.messages"] == 0:
             print(f"Consumed (topic 1): {message_counter_int1}")
         #
-        batch_size_int2 = num_messages_int1 if num_messages_int1 < batch_size_int else batch_size_int
+        batch_size_int2 = min(num_messages_int1, batch_size_int)
         message_dict_list2 = []
         while True:
             message_dict_list2 += cluster2.consume(n=batch_size_int2)
@@ -890,9 +949,11 @@ def zip_foldl(cluster1, topic_str1, cluster2, topic_str2, zip_foldl_function, in
         if break_bool:
             break
         #
-        if num_messages_int != ALL_MESSAGES:
-            if message_counter_int1 >= num_messages_int:
-                break
+        if (
+            num_messages_int != ALL_MESSAGES
+            and message_counter_int1 >= num_messages_int
+        ):
+            break
     #
     cluster1.close()
     cluster2.close()
@@ -1350,14 +1411,13 @@ class Cluster:
         schema_dict = {"schema": schema_str, "schemaType": schema_type_str}
         response = requests.post(url_str, headers=headers_dict, json=schema_dict, auth=user_str_password_str_tuple)
         response_dict = response.json()
-        schema_id_int = response_dict["id"]
-        return schema_id_int
+        return response_dict["id"]
 
     def schema_str_to_generalizedProtocolMessageType(self, schema_str, topic_str, key_bool):
         schema_id_int = self.post_schema(schema_str, "PROTOBUF", topic_str, key_bool)
-        #
-        generalizedProtocolMessageType = self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(schema_id_int, schema_str)
-        return generalizedProtocolMessageType
+        return self.schema_id_int_and_schema_str_to_generalizedProtocolMessageType(
+            schema_id_int, schema_str
+        )
 
     def schema_id_int_to_generalizedProtocolMessageType_protobuf_schema_str_tuple(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
@@ -1368,15 +1428,11 @@ class Cluster:
 
     def schema_id_int_to_avro_schema_str(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
-        avro_schema_str = schema.schema_str
-        #
-        return avro_schema_str
+        return schema.schema_str
 
     def schema_id_int_to_jsonschema_str(self, schema_id_int):
         schema = self.schemaRegistryClient.get_schema(schema_id_int)
-        jsonschema_str = schema.schema_str
-        #
-        return jsonschema_str
+        return schema.schema_str
 
     def schema_id_int_and_schema_str_to_generalizedProtocolMessageType(self, schema_id_int, schema_str):
         path_str = f"/{tempfile.gettempdir()}/kash.py/clusters/{self.cluster_str}"
@@ -1392,8 +1448,7 @@ class Cluster:
         sys.path.insert(1, path_str)
         schema_module = importlib.import_module(f"schema_{schema_id_int}_pb2")
         schema_name_str = list(schema_module.DESCRIPTOR.message_types_by_name.keys())[0]
-        generalizedProtocolMessageType = getattr(schema_module, schema_name_str)
-        return generalizedProtocolMessageType
+        return getattr(schema_module, schema_name_str)
 
     def bytes_protobuf_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
@@ -1410,8 +1465,7 @@ class Cluster:
         #
         protobufDeserializer = ProtobufDeserializer(generalizedProtocolMessageType, {"use.deprecated.format": False})
         protobuf_message = protobufDeserializer(bytes, None)
-        dict = MessageToDict(protobuf_message)
-        return dict
+        return MessageToDict(protobuf_message)
 
     def bytes_avro_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
@@ -1427,8 +1481,7 @@ class Cluster:
             self.last_consumed_message_value_schema_str = avro_schema_str
         #
         avroDeserializer = AvroDeserializer(self.schemaRegistryClient, avro_schema_str)
-        dict = avroDeserializer(bytes, None)
-        return dict
+        return avroDeserializer(bytes, None)
 
     def bytes_jsonschema_to_dict(self, bytes, key_bool):
         schema_id_int = int.from_bytes(bytes[1:5], "big")
@@ -1444,8 +1497,7 @@ class Cluster:
             self.last_consumed_message_value_schema_str = jsonschema_str
         #
         jsonDeserializer = JSONDeserializer(jsonschema_str)
-        dict = jsonDeserializer(bytes, None)
-        return dict
+        return jsonDeserializer(bytes, None)
 
     # Deserialize a message to a message dictionary
 
@@ -1455,14 +1507,13 @@ class Cluster:
         #
 
         def bytes_to_str(bytes):
-            if bytes:
-                return bytes.decode("utf-8")
-            else:
-                return bytes
+            return bytes.decode("utf-8") if bytes else bytes
+
         #
 
         def bytes_to_bytes(bytes):
             return bytes
+
         #
         if key_type_str.lower() == "str":
             decode_key = bytes_to_str
@@ -1505,9 +1556,10 @@ class Cluster:
         configResource = ConfigResource(resourceType, resource_str)
         # configEntry_dict: ConfigResource -> ConfigEntry
         configEntry_dict = self.adminClient.describe_configs([configResource])[configResource].result()
-        # config_dict: str -> str
-        config_dict = {config_key_str: configEntry.value for config_key_str, configEntry in configEntry_dict.items()}
-        return config_dict
+        return {
+            config_key_str: configEntry.value
+            for config_key_str, configEntry in configEntry_dict.items()
+        }
 
     def set_config_dict(self, resourceType, resource_str, new_config_dict, test=False):
         test_bool = test
@@ -1520,9 +1572,11 @@ class Cluster:
         #
         alter_config_dict = {}
         for key_str, value_str in old_config_dict.items():
-            if resourceType == ResourceType.BROKER:
-                if key_str not in white_list_key_str_list:
-                    continue
+            if (
+                resourceType == ResourceType.BROKER
+                and key_str not in white_list_key_str_list
+            ):
+                continue
             if key_str in new_config_dict:
                 value_str = new_config_dict[key_str]
             if value_str:
@@ -1562,11 +1616,10 @@ class Cluster:
         topic_str_total_size_int_size_dict_tuple_dict = {}
         for topic_str, partition_int_tuple_dict in topic_str_partition_int_tuple_dict_dict.items():
             size_dict = {partition_int: partition_int_tuple_dict[partition_int][1]-partition_int_tuple_dict[partition_int][0] for partition_int in partition_int_tuple_dict.keys()}
-            #
-            total_size_int = 0
-            for offset_int_tuple in partition_int_tuple_dict.values():
-                partition_size_int = offset_int_tuple[1] - offset_int_tuple[0]
-                total_size_int += partition_size_int
+            total_size_int = sum(
+                offset_int_tuple[1] - offset_int_tuple[0]
+                for offset_int_tuple in partition_int_tuple_dict.values()
+            )
             #
             topic_str_total_size_int_size_dict_tuple_dict[topic_str] = (total_size_int, size_dict)
         return topic_str_total_size_int_size_dict_tuple_dict
@@ -1653,21 +1706,28 @@ class Cluster:
             if partitions_bool:
                 return topic_str_total_size_int_size_dict_tuple_dict
             else:
-                topic_str_size_int_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][0] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
-                return topic_str_size_int_dict
+                return {
+                    topic_str: topic_str_total_size_int_size_dict_tuple_dict[
+                        topic_str
+                    ][0]
+                    for topic_str in topic_str_total_size_int_size_dict_tuple_dict
+                }
+        elif partitions_bool:
+            topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str_or_str_list)
+            return {
+                topic_str: topic_str_total_size_int_size_dict_tuple_dict[
+                    topic_str
+                ][1]
+                for topic_str in topic_str_total_size_int_size_dict_tuple_dict
+            }
         else:
-            if partitions_bool:
-                topic_str_total_size_int_size_dict_tuple_dict = self.size(pattern_str_or_str_list)
-                topic_str_size_dict_dict = {topic_str: topic_str_total_size_int_size_dict_tuple_dict[topic_str][1] for topic_str in topic_str_total_size_int_size_dict_tuple_dict}
-                return topic_str_size_dict_dict
-            else:
-                topic_str_list = list(self.adminClient.list_topics().topics.keys())
-                if pattern_str_or_str_list is not None:
-                    if isinstance(pattern_str_or_str_list, str):
-                        pattern_str_or_str_list = [pattern_str_or_str_list]
-                    topic_str_list = [topic_str for topic_str in topic_str_list if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)]
-                topic_str_list.sort()
-                return topic_str_list
+            topic_str_list = list(self.adminClient.list_topics().topics.keys())
+            if pattern_str_or_str_list is not None:
+                if isinstance(pattern_str_or_str_list, str):
+                    pattern_str_or_str_list = [pattern_str_or_str_list]
+                topic_str_list = [topic_str for topic_str in topic_str_list if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)]
+            topic_str_list.sort()
+            return topic_str_list
 
     ls = topics
     """List topics on the cluster (shortcut for topics()).
@@ -1808,10 +1868,10 @@ class Cluster:
                 c.config(["test?", "bla?"])
         """
         topic_str_list = self.topics(pattern_str_or_str_list)
-        #
-        topic_str_config_dict_dict = {topic_str: self.get_config_dict(ResourceType.TOPIC, topic_str) for topic_str in topic_str_list}
-        #
-        return topic_str_config_dict_dict
+        return {
+            topic_str: self.get_config_dict(ResourceType.TOPIC, topic_str)
+            for topic_str in topic_str_list
+        }
 
     def set_config(self, pattern_str_or_str_list, key_str, value_str, test=False):
         """Set a configuration item of topics.
@@ -1844,21 +1904,20 @@ class Cluster:
         #
         for topic_str in topic_str_list:
             self.set_config_dict(ResourceType.TOPIC, topic_str, {key_str: value_str}, test_bool)
-        #
-        topic_str_key_str_value_str_tuple_dict = {topic_str: (key_str, value_str) for topic_str in topic_str_list}
-        return topic_str_key_str_value_str_tuple_dict
+        return {topic_str: (key_str, value_str) for topic_str in topic_str_list}
 
     def block_topic(self, topic_str, exists=True):
         exists_bool = exists
         #
         num_retries_int = 0
         while True:
-            if exists_bool:
-                if self.exists(topic_str):
-                    return True
-            else:
-                if not self.exists(topic_str):
-                    return True
+            if (
+                exists_bool
+                and self.exists(topic_str)
+                or not exists_bool
+                and not self.exists(topic_str)
+            ):
+                return True
             #
             num_retries_int += 1
             if num_retries_int >= self.kash_dict["block.num.retries"]:
@@ -2032,17 +2091,18 @@ class Cluster:
         #
         topic_str_partition_int_offsets_int_dict_dict = {}
         for topic_str in topic_str_list:
-            partition_int_offset_int_dict = {}
-            #
-            topicPartition_list = [TopicPartition(topic_str, partition_int, timestamp_int) for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()]
-            if topicPartition_list:
+            if topicPartition_list := [
+                TopicPartition(topic_str, partition_int, timestamp_int)
+                for partition_int, timestamp_int in partition_int_timestamp_int_dict.items()
+            ]:
                 config_dict = self.config_dict
                 config_dict["group.id"] = "dummy_group_id"
                 consumer = get_consumer(config_dict)
                 topicPartition_list1 = consumer.offsets_for_times(topicPartition_list, timeout=timeout)
-                #
-                for topicPartition in topicPartition_list1:
-                    partition_int_offset_int_dict[topicPartition.partition] = topicPartition.offset
+                partition_int_offset_int_dict = {
+                    topicPartition.partition: topicPartition.offset
+                    for topicPartition in topicPartition_list1
+                }
                 #
                 topic_str_partition_int_offsets_int_dict_dict[topic_str] = partition_int_offset_int_dict
         #
@@ -2072,10 +2132,16 @@ class Cluster:
             pattern_str_or_str_list = [pattern_str_or_str_list]
         #
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
-        #
-        topic_str_topic_dict_dict = {topic_str: topicMetadata_to_topic_dict(topic_str_topicMetadata_dict[topic_str]) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
-        #
-        return topic_str_topic_dict_dict
+        return {
+            topic_str: topicMetadata_to_topic_dict(
+                topic_str_topicMetadata_dict[topic_str]
+            )
+            for topic_str in topic_str_topicMetadata_dict
+            if any(
+                fnmatch(topic_str, pattern_str)
+                for pattern_str in pattern_str_or_str_list
+            )
+        }
 
     def exists(self, topic_str):
         """Test whether a topic exists on the cluster.
@@ -2119,10 +2185,14 @@ class Cluster:
             pattern_str_or_str_list = [pattern_str_or_str_list]
         #
         topic_str_topicMetadata_dict = self.adminClient.list_topics().topics
-        #
-        topic_str_num_partitions_int_dict = {topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions) for topic_str in topic_str_topicMetadata_dict if any(fnmatch(topic_str, pattern_str) for pattern_str in pattern_str_or_str_list)}
-        #
-        return topic_str_num_partitions_int_dict
+        return {
+            topic_str: len(topic_str_topicMetadata_dict[topic_str].partitions)
+            for topic_str in topic_str_topicMetadata_dict
+            if any(
+                fnmatch(topic_str, pattern_str)
+                for pattern_str in pattern_str_or_str_list
+            )
+        }
 
     def set_partitions(self, pattern_str_or_str_list, num_partitions_int, test=False):
         """Set the number of partitions of topics.
@@ -2155,9 +2225,7 @@ class Cluster:
         #
         for future in topic_str_future_dict.values():
             future.result()
-        #
-        topic_str_num_partitions_int_dict = {topic_str: num_partitions_int for topic_str in topic_str_list}
-        return topic_str_num_partitions_int_dict
+        return {topic_str: num_partitions_int for topic_str in topic_str_list}
 
     # AdminClient - groups
 
@@ -2194,7 +2262,14 @@ class Cluster:
         pattern_str_or_str_list = [patterns] if isinstance(patterns, str) else patterns
         #
         consumerGroupState_pattern_str_list = [state_patterns] if isinstance(state_patterns, str) else state_patterns
-        consumerGroupState_set = set([str_to_consumerGroupState(consumerGroupState_str) for consumerGroupState_str in all_consumerGroupState_str_list if any(fnmatch(consumerGroupState_str, consumerGroupState_pattern_str) for consumerGroupState_pattern_str in consumerGroupState_pattern_str_list)])
+        consumerGroupState_set = {
+            str_to_consumerGroupState(consumerGroupState_str)
+            for consumerGroupState_str in all_consumerGroupState_str_list
+            if any(
+                fnmatch(consumerGroupState_str, consumerGroupState_pattern_str)
+                for consumerGroupState_pattern_str in consumerGroupState_pattern_str_list
+            )
+        }
         if not consumerGroupState_set:
             return {} if state else []
         #
@@ -2235,9 +2310,12 @@ class Cluster:
             return {}
         #
         group_str_consumerGroupDescription_future_dict = self.adminClient.describe_consumer_groups(group_str_list)
-        group_str_group_description_dict_dict = {group_str: consumerGroupDescription_to_group_description_dict(consumerGroupDescription_future.result()) for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()}
-        #
-        return group_str_group_description_dict_dict
+        return {
+            group_str: consumerGroupDescription_to_group_description_dict(
+                consumerGroupDescription_future.result()
+            )
+            for group_str, consumerGroupDescription_future in group_str_consumerGroupDescription_future_dict.items()
+        }
 
     def delete_groups(self, patterns, state_patterns="*"):
         """Delete consumer groups.
@@ -2310,10 +2388,9 @@ class Cluster:
         #
         consumerGroupTopicPartitions_list = [_ConsumerGroupTopicPartitions(group_str) for group_str in group_str_list]
         group_str_consumerGroupTopicPartitions_future_dict = self.adminClient.list_consumer_group_offsets(consumerGroupTopicPartitions_list)
-        #
-        group_offsets = group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(group_str_consumerGroupTopicPartitions_future_dict)
-        #
-        return group_offsets
+        return group_str_consumerGroupTopicPartitions_future_dict_to_group_offsets(
+            group_str_consumerGroupTopicPartitions_future_dict
+        )
 
     def alter_group_offsets(self, group_offsets):
         """Alter consumer group offsets.
@@ -2365,17 +2442,20 @@ class Cluster:
         #
         if pattern_int_or_str_or_int_or_str_list is None:
             pattern_int_or_str_or_int_or_str_list = ["*"]
-        else:
-            if isinstance(pattern_int_or_str_or_int_or_str_list, int):
-                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str_or_int_or_str_list)]
-            elif isinstance(pattern_int_or_str_or_int_or_str_list, str):
-                pattern_int_or_str_or_int_or_str_list = [pattern_int_or_str_or_int_or_str_list]
-            elif isinstance(pattern_int_or_str_or_int_or_str_list, list):
-                pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list]
-        #
-        broker_dict = {broker_int: brokerMetadata.host + ":" + str(brokerMetadata.port) for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items() if any(fnmatch(str(broker_int), pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list)}
-        #
-        return broker_dict
+        elif isinstance(pattern_int_or_str_or_int_or_str_list, int):
+            pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str_or_int_or_str_list)]
+        elif isinstance(pattern_int_or_str_or_int_or_str_list, str):
+            pattern_int_or_str_or_int_or_str_list = [pattern_int_or_str_or_int_or_str_list]
+        elif isinstance(pattern_int_or_str_or_int_or_str_list, list):
+            pattern_int_or_str_or_int_or_str_list = [str(pattern_int_or_str) for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list]
+        return {
+            broker_int: f"{brokerMetadata.host}:{str(brokerMetadata.port)}"
+            for broker_int, brokerMetadata in self.adminClient.list_topics().brokers.items()
+            if any(
+                fnmatch(str(broker_int), pattern_int_or_str)
+                for pattern_int_or_str in pattern_int_or_str_or_int_or_str_list
+            )
+        }
 
     def broker_config(self, pattern_int_or_str_or_int_or_str_list):
         """List the configurations of brokers of the cluster.
@@ -2398,10 +2478,10 @@ class Cluster:
                 c.broker_config([0, 1])
         """
         broker_dict = self.brokers(pattern_int_or_str_or_int_or_str_list)
-        #
-        broker_int_broker_config_dict = {broker_int: self.get_config_dict(ResourceType.BROKER, str(broker_int)) for broker_int in broker_dict}
-        #
-        return broker_int_broker_config_dict
+        return {
+            broker_int: self.get_config_dict(ResourceType.BROKER, str(broker_int))
+            for broker_int in broker_dict
+        }
 
     def set_broker_config(self, pattern_int_or_str_or_int_or_str_list, key_str, value_str, test=False):
         """Set a configuration item of brokers.
@@ -2436,9 +2516,7 @@ class Cluster:
         #
         for broker_int in broker_dict:
             self.set_config_dict(ResourceType.BROKER, str(broker_int), {key_str: value_str}, test_bool)
-        #
-        broker_int_key_str_value_str_tuple_dict = {broker_int: (key_str, value_str) for broker_int in broker_dict}
-        return broker_int_key_str_value_str_tuple_dict
+        return {broker_int: (key_str, value_str) for broker_int in broker_dict}
 
     # AdminClient - ACLs
 
@@ -2628,11 +2706,12 @@ class Cluster:
             #
 
             def payload_to_payload_dict(payload):
-                if isinstance(payload, str) or isinstance(payload, bytes):
+                if isinstance(payload, (str, bytes)):
                     payload_dict = json.loads(payload)
                 else:
                     payload_dict = payload
                 return payload_dict
+
             #
             if type_str.lower() == "json":
                 if isinstance(payload, dict):
@@ -2657,6 +2736,7 @@ class Cluster:
             else:
                 payload_str_or_bytes = payload
             return payload_str_or_bytes
+
         #
         key_str_or_bytes = serialize(key_bool=True)
         value_str_or_bytes = serialize(key_bool=False)
@@ -2886,10 +2966,7 @@ class Cluster:
         offsets_dict = offsets
         config_dict = config
         #
-        if group is None:
-            group_str = create_unique_group_id()
-        else:
-            group_str = group
+        group_str = create_unique_group_id() if group is None else group
         #
         self.config_dict["group.id"] = group_str
         self.config_dict["auto.offset.reset"] = self.kash_dict["auto.offset.reset"]
@@ -2910,6 +2987,7 @@ class Cluster:
                 for index_int, offset_int in offsets_dict.items():
                     topicPartition_list[index_int].offset = offset_int
                 consumer.assign(topicPartition_list)
+
         self.consumer.subscribe([topic_str], on_assign=on_assign)
         self.subscribed_topic_str = topic_str
         self.subscribed_group_str = group_str
@@ -2975,9 +3053,14 @@ class Cluster:
         message_list = self.consumer.consume(num_messages_int, self.kash_dict["consume.timeout"])
         if message_list:
             self.last_consumed_message = message_list[-1]
-        message_dict_list = [self.message_to_message_dict(message, key_type=self.subscribed_key_type_str, value_type=self.subscribed_value_type_str) for message in message_list]
-        #
-        return message_dict_list
+        return [
+            self.message_to_message_dict(
+                message,
+                key_type=self.subscribed_key_type_str,
+                value_type=self.subscribed_value_type_str,
+            )
+            for message in message_list
+        ]
 
     def commit(self, asynchronous=False):
         """Commit the last consumed message from the topic subscribed to.
@@ -3018,8 +3101,13 @@ class Cluster:
         #
         topicPartition_list = self.consumer.committed(self.topicPartition_list, timeout=timeout_float)
         if self.subscribed_topic_str:
-            offsets_dict = {topicPartition.partition: offset_int_to_int_or_str(topicPartition.offset) for topicPartition in topicPartition_list if topicPartition.topic == self.subscribed_topic_str}
-            return offsets_dict
+            return {
+                topicPartition.partition: offset_int_to_int_or_str(
+                    topicPartition.offset
+                )
+                for topicPartition in topicPartition_list
+                if topicPartition.topic == self.subscribed_topic_str
+            }
         else:
             return {}
 
@@ -3175,9 +3263,11 @@ class Cluster:
             #
             if self.verbose_int > 0 and message_counter_int % self.kash_dict["progress.num.messages"] == 0:
                 print(f"Consumed: {message_counter_int}")
-            if num_messages_int != ALL_MESSAGES:
-                if message_counter_int >= num_messages_int:
-                    break
+            if (
+                num_messages_int != ALL_MESSAGES
+                and message_counter_int >= num_messages_int
+            ):
+                break
         self.close()
         return (acc, message_counter_int)
 
@@ -3463,23 +3553,18 @@ class Cluster:
                 c.wc("test")
         """
         def foldl_function(acc, message_dict):
-            if message_dict["key"] is None:
-                key_str = ""
-            else:
-                key_str = str(message_dict["key"])
-            num_words_key_int = 0 if key_str == "" else len(key_str.split(" "))
+            key_str = "" if message_dict["key"] is None else str(message_dict["key"])
+            num_words_key_int = len(key_str.split(" ")) if key_str else 0
             num_bytes_key_int = len(key_str)
             #
-            if message_dict["value"] is None:
-                value_str = ""
-            else:
-                value_str = str(message_dict["value"])
+            value_str = "" if message_dict["value"] is None else str(message_dict["value"])
             num_words_value_int = len(value_str.split(" "))
             num_bytes_value_int = len(value_str)
             #
             acc_num_words_int = acc[0] + num_words_key_int + num_words_value_int
             acc_num_bytes_int = acc[1] + num_bytes_key_int + num_bytes_value_int
             return (acc_num_words_int, acc_num_bytes_int)
+
     #
         ((acc_num_words_int, acc_num_bytes_int), num_messages_int) = self.foldl(topic_str, foldl_function, (0, 0), break_function=break_function, group=group, offsets=offsets, config=config, key_type=key_type, value_type=value_type, n=n, batch_size=batch_size)
         return (num_messages_int, acc_num_words_int, acc_num_bytes_int)
