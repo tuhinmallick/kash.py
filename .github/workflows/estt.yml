@@ -28,9 +28,11 @@ jobs:
         pip install -r requirements.txt
         
     - name: Run custom test script
+      working-directory: ${{github.workspace}}/test
       run: |
         # Run custom test script
-        ./test/test_kash.sh
+        ./test.sh
+
         
     - name: Generate coverage report
       run: |
