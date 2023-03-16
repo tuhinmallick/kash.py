@@ -741,16 +741,15 @@ class Test(unittest.TestCase):
             if message_dict["value"]["name"] == "cookie":
                 message_dict["value"]["colour"] += "ish"
             return message_dict
+
         cluster.create(f"{topic_str}_2")
         map(cluster, topic_str, cluster, f"{topic_str}_2", map_function, source_value_type="json", n=3)
         self.assertEqual(cluster.size(f"{topic_str}_2")[f"{topic_str}_2"][1][0], 3)
         #
         def break_function(message_dict1, _):
             value_dict1 = json.loads(message_dict1["value"])
-            if value_dict1["colour"] == "white":
-                return True
-            else:
-                return False
+            return value_dict1["colour"] == "white"
+
         #
         cluster2 = Cluster(cluster_str)
         cluster.verbose(1)
@@ -858,13 +857,12 @@ class Test(unittest.TestCase):
             value_str = json.dumps(value_dict)
             message_dict["value"] = value_str
             return message_dict
+
         #
         def break_function(message_dict):
             value_dict = json.loads(message_dict["value"])
-            if value_dict["colour"] == "white":
-                return True
-            else:
-                return False
+            return value_dict["colour"] == "white"
+
         #
         message_dict_list, num_messages_int = cluster.map(topic_str, map_function, break_function=break_function)
         self.assertEqual(json.loads(message_dict_list[0]["value"])["colour"], "brownish")
